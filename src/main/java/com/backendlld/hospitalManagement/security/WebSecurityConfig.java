@@ -12,6 +12,7 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 @RequiredArgsConstructor
@@ -19,6 +20,7 @@ import org.springframework.security.web.SecurityFilterChain;
 public class WebSecurityConfig {
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationConfiguration authConfig;
+    private final JwtAuthFilter jwtAuthFilter;
 
     @Bean
     public AuthenticationManager authenticationManager() throws Exception {
@@ -32,10 +34,9 @@ public class WebSecurityConfig {
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authz -> authz
                         .requestMatchers("/public/**","/auth/**").permitAll()
-                        .requestMatchers("/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/patients/**","/doctors/**").hasAnyRole("DOCTOR", "ADMIN")
                         .anyRequest().authenticated()
-                );
+                )
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
 
         return http.build();
