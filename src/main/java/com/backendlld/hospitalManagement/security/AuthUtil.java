@@ -1,11 +1,13 @@
 package com.backendlld.hospitalManagement.security;
 
 import com.backendlld.hospitalManagement.model.User;
+import com.backendlld.hospitalManagement.model.enums.AuthProviderType;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
@@ -40,6 +42,46 @@ public class AuthUtil {
                 .parseSignedClaims(token)
                 .getPayload();
         return claims.getSubject();
+    }
+
+    public AuthProviderType getProviderTypeFromRegistrationId(String registrationId){
+        return switch(registrationId.toLowerCase()){
+            case "google" -> AuthProviderType.GOOGLE;
+            case "github" -> AuthProviderType.GITHUB;
+            default -> throw new IllegalArgumentException("Unsupported registration ID: " + registrationId);
+        };
+    }
+
+    public String determineProviderIdFromOAuth2User(OAuth2User oAuth2User,String registrationId) {
+        String providerId = switch (registrationId.toLowerCase()){
+            case "google" -> oAuth2User.getAttribute("sub");
+            case "github" -> oAuth2User.getAttribute("id").toString();
+            default -> {
+                log.error("Unsupported registration ID: {}" , registrationId);
+                throw new IllegalArgumentException("Unsupported registration ID: " + registrationId);
+            }
+        };
+        if(providerId == null || providerId.isBlank()){
+            log.error("Provider ID is null or blank for registration ID: {}", registrationId);
+            throw new IllegalArgumentException("Provider ID is null or blank for registration ID: " + registrationId);
+        }
+        return providerId;
+
+    }
+
+    public String determineUsernameFromOAuth2User(OAuth2User oAuth2User, String registrationId,String providerId) {
+        String email = oAuth2User.getAttribute("email");
+        if(email != null && !email.isBlank()){
+            return email;
+        }
+
+        String username = switch (registrationId.toLowerCase()){
+            case "google" -> oAuth2User.getAttribute("email");
+            case "github" -> oAuth2User.getAttribute("login");
+            default -> providerId;
+        };
+
+        return username;
     }
 
 }

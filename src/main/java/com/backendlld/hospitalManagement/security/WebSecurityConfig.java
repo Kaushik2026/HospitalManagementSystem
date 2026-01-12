@@ -1,31 +1,27 @@
 package com.backendlld.hospitalManagement.security;
 
+
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.config.Customizer;
-import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+
+
+@Slf4j
 @Configuration
 @RequiredArgsConstructor
-@EnableWebSecurity
+@EnableMethodSecurity
 public class WebSecurityConfig {
-    private final PasswordEncoder passwordEncoder;
-    private final AuthenticationConfiguration authConfig;
-    private final JwtAuthFilter jwtAuthFilter;
 
-    @Bean
-    public AuthenticationManager authenticationManager() throws Exception {
-        return authConfig.getAuthenticationManager();
-    }
+    private final JwtAuthFilter jwtAuthFilter;
+    private final OAuth2SuccessHandler oAuth2SuccessHandler;
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -36,13 +32,23 @@ public class WebSecurityConfig {
                         .requestMatchers("/public/**","/auth/**").permitAll()
                         .anyRequest().authenticated()
                 )
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                .oauth2Login(oAuth2 -> oAuth2
+                        .failureHandler((request, response, exception) -> {
+                            log.error("OAuth2 login failed: {}", exception.getMessage());
+                        })
+                        .successHandler(oAuth2SuccessHandler)
+                );
 
 
         return http.build();
 
 
     }
+
+
+
+
 
 //    @Bean
 //    public UserDetailsService userDetailsService() {

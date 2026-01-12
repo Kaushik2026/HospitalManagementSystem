@@ -1,0 +1,20 @@
+spring.security.oauth2.client:
+        registration:
+            google:
+                client-id: your-google-client-id
+                client-secret: your-google-client-secret
+                scope:
+                - email
+                - profile
+            facebook:
+                client-id: your-facebook-client-id
+                client-secret: your-facebook-client-secret
+                scope:
+                - email
+                - public_profile
+            github:
+                client-id: Ov23lifk8PeCfDdhhCPt
+                client-secret: f2b919ca43cb2ab2e1bb2a2b2aaa9bef03285170
+                scope:
+                - read:user
+                - user:email

@@ -6,18 +6,21 @@ import com.backendlld.hospitalManagement.dtos.SignUpRequestDto;
 import com.backendlld.hospitalManagement.dtos.SignupResponseDto;
 import com.backendlld.hospitalManagement.model.Patient;
 import com.backendlld.hospitalManagement.model.User;
+import com.backendlld.hospitalManagement.model.enums.AuthProviderType;
 import com.backendlld.hospitalManagement.repository.PatientRepository;
 import com.backendlld.hospitalManagement.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.event.EventListener;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
-
-import java.util.Set;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -27,11 +30,13 @@ public class AuthServiceImpl implements AuthService{
     private final AuthUtil authUtil;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final PatientRepository patientRepository;
 
     public LoginResponseDto login(LoginRequestDto loginRequestDto) {
 
+//        authentication manager needs an object of UsernamePasswordAuthenticationToken. why usernamepassword
+//        bcoz we are using username and password authentication(asking username and password from user to login).
         Authentication authentication = authenticationManager.authenticate(
+//                object of UsernamePasswordAuthenticationToken
                 new UsernamePasswordAuthenticationToken(loginRequestDto.getUsername(), loginRequestDto.getPassword())
         );
 
@@ -41,19 +46,72 @@ public class AuthServiceImpl implements AuthService{
 
         return new LoginResponseDto(token, user.getId());
     }
-
-
-    public SignupResponseDto signup(SignUpRequestDto signupRequestDto) {
+    public User signUpInternal(SignUpRequestDto signupRequestDto,AuthProviderType authProviderType,String providerId) {
         User user = userRepository.findByUsername(signupRequestDto.getUsername()).orElse(null);
 
         if(user != null) throw new IllegalArgumentException("User already exists");
 
-        user = userRepository.save(User.builder()
+        user =  User.builder()
                 .username(signupRequestDto.getUsername())
-                .password(passwordEncoder.encode(signupRequestDto.getPassword()))
-                .build());
+                .providerType(authProviderType)
+                .providerId(providerId)
+                .build();
+
+        if(authProviderType == AuthProviderType.EMAIL) {
+            user.setPassword(passwordEncoder.encode(signupRequestDto.getPassword()));
+        }
+        return userRepository.save(user);
+
+
+    }
+
+    public SignupResponseDto signup(SignUpRequestDto signupRequestDto) {
+        User user = signUpInternal(signupRequestDto,AuthProviderType.EMAIL,null);
         return new SignupResponseDto(user.getId(), user.getUsername());
     }
+
+
+    @Override
+    @Transactional
+    public ResponseEntity<LoginResponseDto> handleOAuth2LoginRequest(OAuth2User oAuth2User, String registrationId) {
+//        fetch providertype and providerId from oAuth2User and save it in our user.
+        AuthProviderType providerType = authUtil.getProviderTypeFromRegistrationId(registrationId);
+
+        String providerId = authUtil.determineProviderIdFromOAuth2User(oAuth2User, registrationId);
+
+//        check if user already exists with this providerType and providerId
+        User user = userRepository.findByProviderTypeAndProviderId(providerType,providerId).orElse(null);
+//        for future we can take email also from oAuth2User and update our user details like name,profile pic etc.
+//        if provided by auth server. some auth server provide email,name,profile pic etc. some don't.
+        String email = oAuth2User.getAttribute("email");
+
+//        if a user login with google and then with github using same email then we this should not be valid
+//        so we will check that here.
+        User userByEmail = userRepository.findByUsername(email).orElse(null);
+        if(user == null && userByEmail == null){
+//            send to signup flow as this user don't exist in our db
+            String username = authUtil.determineUsernameFromOAuth2User(oAuth2User, registrationId, providerId);
+            user = signUpInternal(new SignUpRequestDto(username, null),providerType,providerId);
+
+        }else if(user != null){
+//            if email is not null so we should update username(email) of user if not already set
+//            bcoz it can happen like if some providers previously didnt provide email by now they did.
+            if(email != null && !email.isBlank() && !email.equals(user.getUsername())){
+                user.setUsername(email);
+                userRepository.save(user);
+            }
+
+        }else{
+            throw new BadCredentialsException("User already exists with this email "+email+" using this provider "+
+                    providerType);
+        }
+
+        LoginResponseDto loginResponseDto = new LoginResponseDto(authUtil.generateAccessToken(user),user.getId());
+        return new ResponseEntity<>(loginResponseDto, HttpStatus.OK);
+
+    }
+
+
 
 
 }
