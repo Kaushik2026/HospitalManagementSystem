@@ -7,6 +7,7 @@ import com.backendlld.hospitalManagement.dtos.SignupResponseDto;
 import com.backendlld.hospitalManagement.model.Patient;
 import com.backendlld.hospitalManagement.model.User;
 import com.backendlld.hospitalManagement.model.enums.AuthProviderType;
+import com.backendlld.hospitalManagement.model.enums.RoleType;
 import com.backendlld.hospitalManagement.repository.PatientRepository;
 import com.backendlld.hospitalManagement.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +23,8 @@ import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Set;
+
 @Service
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService{
@@ -30,6 +33,7 @@ public class AuthServiceImpl implements AuthService{
     private final AuthUtil authUtil;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final PatientRepository patientRepository;
 
     public LoginResponseDto login(LoginRequestDto loginRequestDto) {
 
@@ -55,12 +59,21 @@ public class AuthServiceImpl implements AuthService{
                 .username(signupRequestDto.getUsername())
                 .providerType(authProviderType)
                 .providerId(providerId)
+                .roles(Set.of(RoleType.PATIENT))
                 .build();
 
         if(authProviderType == AuthProviderType.EMAIL) {
             user.setPassword(passwordEncoder.encode(signupRequestDto.getPassword()));
         }
-        return userRepository.save(user);
+
+        user = userRepository.save(user);
+        Patient patient = Patient.builder()
+                .name(signupRequestDto.getName())
+                .email(signupRequestDto.getUsername())
+                .user(user)
+                .build();
+        patientRepository.save(patient);
+        return user;
 
 
     }
@@ -84,14 +97,15 @@ public class AuthServiceImpl implements AuthService{
 //        for future we can take email also from oAuth2User and update our user details like name,profile pic etc.
 //        if provided by auth server. some auth server provide email,name,profile pic etc. some don't.
         String email = oAuth2User.getAttribute("email");
+        String name = oAuth2User.getAttribute("name");
 
-//        if a user login with google and then with github using same email then we this should not be valid
+//        if a user login with google and then with github using same email then this should not be valid
 //        so we will check that here.
         User userByEmail = userRepository.findByUsername(email).orElse(null);
         if(user == null && userByEmail == null){
 //            send to signup flow as this user don't exist in our db
             String username = authUtil.determineUsernameFromOAuth2User(oAuth2User, registrationId, providerId);
-            user = signUpInternal(new SignUpRequestDto(username, null),providerType,providerId);
+            user = signUpInternal(new SignUpRequestDto(name,username, null),providerType,providerId);
 
         }else if(user != null){
 //            if email is not null so we should update username(email) of user if not already set

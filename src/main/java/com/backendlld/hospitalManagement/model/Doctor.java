@@ -22,6 +22,10 @@ public class Doctor extends Base {
     @Column(nullable = false, unique = true)
     private String email;
 
+    @OneToOne
+    @MapsId
+    private User user;
+
     @OneToMany(cascade = CascadeType.ALL,mappedBy = "doctor")
     @ToString.Exclude
     private List<Appointment> appointments=new ArrayList<>();
