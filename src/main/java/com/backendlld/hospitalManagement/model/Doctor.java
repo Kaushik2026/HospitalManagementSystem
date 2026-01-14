@@ -26,11 +26,15 @@ public class Doctor extends Base {
     @MapsId
     private User user;
 
+    @OneToMany(mappedBy = "headOfDepartment", cascade = CascadeType.PERSIST)
+    @ToString.Exclude
+    private List<Department> headOfDepartments = new ArrayList<>();
+
     @OneToMany(cascade = CascadeType.ALL,mappedBy = "doctor")
     @ToString.Exclude
     private List<Appointment> appointments=new ArrayList<>();
 
-    @ManyToMany(mappedBy = "doctors")
+    @ManyToMany(mappedBy = "doctors",cascade = CascadeType.PERSIST)
     @ToString.Exclude
     private List<Department> departments=new ArrayList<>();
 }

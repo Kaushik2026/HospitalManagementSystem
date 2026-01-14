@@ -9,7 +9,7 @@ import java.util.List;
 
 public interface AppointmentService {
     AppointmentResponseDto createNewAppointment(CreateAppointmentRequestDto dto);
-    Appointment reAssignAppointmentToAnotherDoctor(Long appointmentId, Long newDoctorId);
+    AppointmentResponseDto reAssignAppointmentToAnotherDoctor(Long appointmentId, Long newDoctorId);
 
     List<AppointmentResponseDto> getAllAppointmentsOfDoctor(Long docId);
 }

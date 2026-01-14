@@ -2,6 +2,7 @@ package com.backendlld.hospitalManagement.model;
 
 import com.backendlld.hospitalManagement.model.enums.AuthProviderType;
 import com.backendlld.hospitalManagement.model.enums.RoleType;
+import com.backendlld.hospitalManagement.security.RolePermissionMapping;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.security.core.GrantedAuthority;
@@ -31,7 +32,7 @@ public class User extends Base implements UserDetails{
     @Enumerated(EnumType.STRING)
     private AuthProviderType providerType;
 
-    @ElementCollection(fetch = FetchType.EAGER)//As we have to build table for roles we have added this annotation.
+    @ElementCollection(fetch = FetchType.EAGER)//As we have to build seperate table for roles we have added this annotation.
     @Enumerated(EnumType.STRING)
     private Set<RoleType> roles=new HashSet<>();
 
@@ -44,5 +45,15 @@ public class User extends Base implements UserDetails{
         return roles.stream()
                 .map(role -> new SimpleGrantedAuthority("ROLE_" + role.name()))
                 .collect(Collectors.toSet());
+
+//        Set<SimpleGrantedAuthority> authorities=new HashSet<>();
+//        roles.forEach(
+//                role -> {
+//                    Set<SimpleGrantedAuthority> permessions = RolePermissionMapping.getAuthoritiesForRole(role);
+//                    authorities.addAll(permessions);
+//                    authorities.add(new SimpleGrantedAuthority("ROLE_" + role.name()));
+//                }
+//        );
+//        return authorities;
     }
 }

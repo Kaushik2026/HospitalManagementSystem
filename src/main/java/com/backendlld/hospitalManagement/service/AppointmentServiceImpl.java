@@ -51,7 +51,7 @@ public class AppointmentServiceImpl implements AppointmentService {
 
     @Override
     @Transactional
-    public Appointment reAssignAppointmentToAnotherDoctor(Long appointmentId, Long newDoctorId) {
+    public AppointmentResponseDto reAssignAppointmentToAnotherDoctor(Long appointmentId, Long newDoctorId) {
         Appointment appointment = appointmentRepository.findById(appointmentId)
                 .orElseThrow(() -> new EntityNotFoundException("Appointment not found with id: " + appointmentId));
         Doctor newDoctor = doctorRepository.findById(newDoctorId)
@@ -60,7 +60,7 @@ public class AppointmentServiceImpl implements AppointmentService {
         appointment.setDoctor(newDoctor);
         newDoctor.getAppointments().add(appointment);
 
-        return appointment;
+        return modelMapper.map(appointment,AppointmentResponseDto.class);
 
     }
 

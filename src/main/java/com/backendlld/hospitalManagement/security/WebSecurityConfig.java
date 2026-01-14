@@ -33,10 +33,11 @@ public class WebSecurityConfig {
                 .sessionManagement(sessionConfig -> sessionConfig
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authz -> authz
-                        .requestMatchers("/public/**","/auth/**").permitAll()
+                        .requestMatchers("/auth/**").permitAll()
                         .requestMatchers("/admin/**").hasRole(RoleType.ADMIN.name())
                         .requestMatchers("/doctors/**").hasAnyRole(RoleType.DOCTOR.name(), RoleType.ADMIN.name())
                         .requestMatchers("/patients/**").hasAnyRole(RoleType.PATIENT.name(), RoleType.ADMIN.name())
+                        .requestMatchers("/hospital/**").hasAnyRole(RoleType.STAFF.name(), RoleType.ADMIN.name())
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)

@@ -17,17 +17,17 @@ import java.util.List;
 @RequiredArgsConstructor
 public class AdminController {
 
-    private final PatientService patientService;
+
     private final DoctorService doctorService;
-    @GetMapping("/patients")
-    public ResponseEntity<List<PatientResponseDto>> getAllPatients(
-            @RequestParam(value = "page", defaultValue = "0") Integer pageNumber,
-            @RequestParam(value = "size", defaultValue = "10") Integer pageSize
-    ) {
-        return ResponseEntity.ok(patientService.getAllPatients(pageNumber, pageSize));
-    }
+
     @PostMapping("/onBoardNewDoctor")
     public ResponseEntity<DoctorResponseDto> onBoardNewDoctor(@RequestBody OnboardDoctorRequestDto onboardDoctorRequestDto) {
         return ResponseEntity.status(HttpStatus.CREATED).body(doctorService.onBoardNewDoctor(onboardDoctorRequestDto));
+    }
+    @PostMapping("/makeHOD/{doctorId}/{departmentId}")
+    public ResponseEntity<DoctorResponseDto> makeHOD(
+            @PathVariable Long doctorId,
+            @PathVariable Long departmentId){
+        return ResponseEntity.ok(doctorService.makeHOD(doctorId,departmentId));
     }
 }
