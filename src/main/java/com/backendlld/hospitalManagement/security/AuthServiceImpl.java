@@ -47,6 +47,7 @@ public class AuthServiceImpl implements AuthService{
         User user = (User) authentication.getPrincipal();
 
         String token = authUtil.generateAccessToken(user);
+        user.setLoggedIn(true);
 
         return new LoginResponseDto(token, user.getId());
     }
@@ -96,7 +97,7 @@ public class AuthServiceImpl implements AuthService{
         User user = userRepository.findByProviderTypeAndProviderId(providerType,providerId).orElse(null);
 //        for future we can take email also from oAuth2User and update our user details like name,profile pic etc.
 //        if provided by auth server. some auth server provide email,name,profile pic etc. some don't.
-        String email = oAuth2User.getAttribute("email");
+        String email = authUtil.determineUsernameFromOAuth2User(oAuth2User, registrationId, providerId);
         String name = oAuth2User.getAttribute("name");
 
 //        if a user login with google and then with github using same email then this should not be valid
@@ -104,7 +105,7 @@ public class AuthServiceImpl implements AuthService{
         User userByEmail = userRepository.findByUsername(email).orElse(null);
         if(user == null && userByEmail == null){
 //            send to signup flow as this user don't exist in our db
-            String username = authUtil.determineUsernameFromOAuth2User(oAuth2User, registrationId, providerId);
+            String username = email;
             user = signUpInternal(new SignUpRequestDto(name,username, null),providerType,providerId);
 
         }else if(user != null){
@@ -116,8 +117,7 @@ public class AuthServiceImpl implements AuthService{
             }
 
         }else{
-            throw new BadCredentialsException("User already exists with this email "+email+" using this provider "+
-                    providerType);
+            throw new BadCredentialsException("User already exists with this email "+email);
         }
 
         LoginResponseDto loginResponseDto = new LoginResponseDto(authUtil.generateAccessToken(user),user.getId());
@@ -125,7 +125,18 @@ public class AuthServiceImpl implements AuthService{
 
     }
 
+    @Override
+    public void assignRoleToUser(Long userId, RoleType role) {
+        User user = userRepository.findById(userId).orElseThrow(() -> new IllegalArgumentException("User not found with id: " + userId));
+        user.getRoles().add(role);
+        userRepository.save(user);
+    }
 
+    @Override
+    public void logOut(User user) {
+        user.setLoggedIn(false);
+        userRepository.save(user);
+    }
 
 
 }

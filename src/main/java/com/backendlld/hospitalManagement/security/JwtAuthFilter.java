@@ -42,9 +42,35 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             }
             String token  = requestTokenHeader.split("Bearer ")[1].trim();
 //            "Bearer","token" this array we will get after spliting. we need token only hence [1].
+
+//             isTokenValid checks signature and expiration
+            if (!authUtil.isTokenValid(token)) {
+                log.warn("Invalid/expired token");
+                String email = authUtil.getUsernameFromToken(token); // Safe even for expired
+                if (email != null) {
+                    User user = userRepository.findByUsername(email).orElse(null);
+                    if (user != null && user.isLoggedIn()) {
+                        user.setLoggedIn(false);  // Cleanup expired session
+                        userRepository.save(user);
+                        log.info("Auto-logged out expired session for: {}", email);
+                    }
+                }
+                response.setStatus(401);
+                response.setContentType("application/json");
+                response.getWriter().write("{\"error\": \"Invalid or expired token\"}");
+                return;
+            }
+
             String username = authUtil.getUsernameFromToken(token);
             if(username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 User user = userRepository.findByUsername(username).orElseThrow();
+                if (!user.isLoggedIn()) {
+                    log.warn("User {} session expired", username);
+
+                    response.setStatus(401);
+                    response.getWriter().write("{\"error\": \"Session expired. Please login again\"}");
+                    return;
+                }
                 //*
                 // UsernamePasswordAuthenticationToken = "This user is authenticated via username"
                 //↓ Used by:

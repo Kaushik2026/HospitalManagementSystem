@@ -38,6 +38,8 @@ public class User extends Base implements UserDetails{
 
     private String providerId;
 
+    private boolean loggedIn;
+
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
